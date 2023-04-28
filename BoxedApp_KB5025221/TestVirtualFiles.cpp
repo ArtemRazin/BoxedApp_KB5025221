@@ -8,6 +8,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/archive/tmpdir.hpp>
 #include "TestVirtualFiles.h"
+#include <fileapi.h>
 
 #define DEF_BOXEDAPPSDK_OPTION__ALL_CHANGES_ARE_VIRTUAL                (1) // default: 0 (FALSE)
 #define DEF_BOXEDAPPSDK_OPTION__EMBED_BOXEDAPP_IN_CHILD_PROCESSES      (2) // default: 0 (FALSE, don't enable BoxedApp to a new process by default)
@@ -18,6 +19,7 @@ BOOL g_virtInitialized = FALSE;
 
 bool WriteTextToFile(const std::wstring &text, const std::wstring &path, bool overwrite);
 bool CopyToVirtualFile(const std::wstring &src_file, const std::wstring &target_file);
+bool CreateDirectoryRecursively(const std::wstring &directory)
 
 template<class T>
 bool IsFileExists(const std::basic_string<T> &filePath);
@@ -116,29 +118,74 @@ bool WriteTextToFile(const std::wstring &text, const std::wstring &path, bool ov
 bool CopyToVirtualFile(const std::wstring &src_file, const std::wstring &target_file)
 {
 	bool success = false;
-	std::wstring exp_src_file;
-	std::wstring exp_target_file;
 
 	try
 	{
-		boost::filesystem::path dir(exp_target_file.c_str());
-		if (!boost::filesystem::exists(dir.parent_path()))
+		std::wstring parentDir;
+		wchar_t buffer[MAX_PATH];
+		GetFullPathName(src_file.c_str(), MAX_PATH, buffer, nullptr);
+		PathCchRemoveFileSpec(buffer, wcslen(buffer)); // Gets parent directory for filepath
+		parentDir = std::wstring(buffer);
+
+		if (!CreateDirectoryRecursively(parentDir))
 		{
-			boost::filesystem::create_directories(dir.parent_path());
+			std::wcout << "Directory already exists: " << parentDir << std::endl;
 		}
-		boost::filesystem::copy_file(src_file, target_file, boost::filesystem::copy_option::overwrite_if_exists);
+
+		if (!CopyFileW(src_file.c_str(), target_file.c_str(), TRUE))
+		{
+			std::wcout << "File " << src_file << " was not copied to " << target_file << std::endl;
+			success = false;
+			goto Done;
+		}
 		success = true;
 	}
-	catch (const boost::filesystem::filesystem_error& e)
+	catch (const std::exception& e)
 	{
 		std::wcout << e.what() << std::endl;
 	}
 
-	std::wcout << L"Copy virtual file successful: " << target_file << std::endl;
-
-	assert(IsFileExists(std::wstring(target_file)));
+Done:
+	std::wcout << L"Copy virtual file successful: " << target_file.c_str() << std::endl;
 
 	return success;
+}
+
+bool CreateDirectoryRecursively(const std::wstring &directory) 
+{
+	static const std::wstring separators(L"\\/");
+
+	// If the specified directory name doesn't exist, do our thing
+	DWORD fileAttributes = ::GetFileAttributesW(directory.c_str());
+	if (fileAttributes == INVALID_FILE_ATTRIBUTES) {
+
+		// Recursively do it all again for the parent directory, if any
+		std::size_t slashIndex = directory.find_last_of(separators);
+		if (slashIndex != std::wstring::npos) {
+			CreateDirectoryRecursively(directory.substr(0, slashIndex));
+		}
+
+		// Create the last directory on the path (the recursive calls will have taken
+		// care of the parent directories by now)
+		BOOL result = ::CreateDirectoryW(directory.c_str(), NULL);
+		if (result == FALSE) {
+			throw std::runtime_error("Could not create directory");
+		}
+		return TRUE;
+	}
+	else { // Specified directory name already exists as a file or directory
+
+		bool isDirectoryOrJunction =
+			((fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) ||
+			((fileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0);
+
+		if (!isDirectoryOrJunction) {
+			throw std::runtime_error(
+				"Could not create directory because a file with the same name exists"
+			);
+		}
+		return FALSE;
+	}
 }
 
 template<class T>
