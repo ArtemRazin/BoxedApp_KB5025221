@@ -9,6 +9,7 @@
 #include <boost/archive/tmpdir.hpp>
 #include "TestVirtualFiles.h"
 #include <fileapi.h>
+#include <pathcch.h>
 
 #define DEF_BOXEDAPPSDK_OPTION__ALL_CHANGES_ARE_VIRTUAL                (1) // default: 0 (FALSE)
 #define DEF_BOXEDAPPSDK_OPTION__EMBED_BOXEDAPP_IN_CHILD_PROCESSES      (2) // default: 0 (FALSE, don't enable BoxedApp to a new process by default)
@@ -21,8 +22,7 @@ bool WriteTextToFile(const std::wstring &text, const std::wstring &path, bool ov
 bool CopyToVirtualFile(const std::wstring &src_file, const std::wstring &target_file);
 bool CreateDirectoryRecursively(const std::wstring &directory)
 
-template<class T>
-bool IsFileExists(const std::basic_string<T> &filePath);
+bool IsRegularFile(const std::wstring& path)
 
 std::wstring ReadTextFile(const std::wstring &path);
 
@@ -68,7 +68,7 @@ BOOL TestVirtualFiles(bool useBoxedApp)
 			if (useBoxedApp)
 				BoxedAppSDK_EnableOption(DEF_BOXEDAPPSDK_OPTION__ALL_CHANGES_ARE_VIRTUAL, FALSE);
 
-			assert(IsFileExists(file_b));
+			assert(IsRegularFile(file_b));
 
 			CopyFile(file_b.c_str(), file_c.c_str(), FALSE);
 		}
@@ -80,10 +80,10 @@ BOOL TestVirtualFiles(bool useBoxedApp)
 			BoxedAppSDK_Exit();
 
 		// confirm virtual file died with environment
-		assert(!IsFileExists(file_b));
+		assert(!IsRegularFile(file_b));
 
 		// confirm c still exists
-		assert(IsFileExists(file_c));
+		assert(IsRegularFile(file_c));
 
 	}
 
@@ -188,11 +188,13 @@ bool CreateDirectoryRecursively(const std::wstring &directory)
 	}
 }
 
-template<class T>
-bool IsFileExists(const std::basic_string<T> &filePath)
+bool IsRegularFile(const std::wstring& path)
 {
-	boost::filesystem::path pathToFile(filePath);
-	return boost::filesystem::is_regular_file(pathToFile);
+	DWORD attributes = GetFileAttributesW(path.c_str());
+	return (attributes != INVALID_FILE_ATTRIBUTES) &&
+		!(attributes & FILE_ATTRIBUTE_DIRECTORY) &&
+		!(attributes & FILE_ATTRIBUTE_DEVICE) &&
+		!(attributes & FILE_ATTRIBUTE_REPARSE_POINT);
 }
 
 std::wstring ReadTextFile(const std::wstring &path)
