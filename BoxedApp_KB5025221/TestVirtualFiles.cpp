@@ -20,9 +20,9 @@ BOOL g_virtInitialized = FALSE;
 
 bool WriteTextToFile(const std::wstring &text, const std::wstring &path, bool overwrite);
 bool CopyToVirtualFile(const std::wstring &src_file, const std::wstring &target_file);
-bool CreateDirectoryRecursively(const std::wstring &directory)
+bool CreateDirectoryRecursively(const std::wstring& directory);
 
-bool IsRegularFile(const std::wstring& path)
+bool IsRegularFile(const std::wstring& path);
 
 std::wstring ReadTextFile(const std::wstring &path);
 
@@ -80,15 +80,23 @@ BOOL TestVirtualFiles(bool useBoxedApp)
 			BoxedAppSDK_Exit();
 
 		// confirm virtual file died with environment
-		assert(!IsRegularFile(file_b));
+		if (useBoxedApp)
+		{
+			assert(!IsRegularFile(file_b));
+		}
 
 		// confirm c still exists
 		assert(IsRegularFile(file_c));
-
 	}
 
 	// confirm contents of C match A and return 0 on success
-	return ReadTextFile(file_c) == text ? 0 : 1;
+	auto const result = ReadTextFile(file_c) == text ? 0 : 1;
+
+	::DeleteFileW(file_a.c_str());
+	::DeleteFileW(file_b.c_str());
+	::DeleteFileW(file_c.c_str());
+
+	return result;
 }
 
 bool WriteTextToFile(const std::wstring &text, const std::wstring &path, bool overwrite)

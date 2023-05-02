@@ -93,7 +93,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)BoxedAppSDK\lib\bxsdk32.lib;V:\boost_1_75_0\bin.v2\libs\filesystem\build\msvc-14.2\debug\link-static\threading-multi\libboost_filesystem-vc142-mt-gd-x32-1_75.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)BoxedAppSDK\lib\bxsdk32.lib;V:\boost_1_75_0\bin.v2\libs\filesystem\build\msvc-14.2\debug\link-static\threading-multi\libboost_filesystem-vc142-mt-gd-x32-1_75.lib;Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
