@@ -3,4 +3,5 @@
 int main()
 {
     TestVirtualFiles(false);
+    TestVirtualFiles(true);
 }
